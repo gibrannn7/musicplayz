@@ -24,7 +24,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final item = queue.value[index];
         mediaItem.add(item);
         
-        // RECORD PLAY STATS
         final songId = item.extras?['id']?.toString();
         if (songId != null) {
           final song = LocalSongModel(
@@ -40,23 +39,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
 
     _player.loopModeStream.listen((loopMode) {
-      final repeatMode = const {
-        LoopMode.off: AudioServiceRepeatMode.none,
-        LoopMode.one: AudioServiceRepeatMode.one,
-        LoopMode.all: AudioServiceRepeatMode.all,
-      }[loopMode]!;
-      playbackState.add(playbackState.value.copyWith(
-        repeatMode: repeatMode,
-        updatePosition: _player.position, // FIX BUG: Update posisi realtime
-      ));
+      _broadcastState(_player.playbackEvent); 
     });
 
     _player.shuffleModeEnabledStream.listen((enabled) {
-      final shuffleMode = enabled ? AudioServiceShuffleMode.all : AudioServiceShuffleMode.none;
-      playbackState.add(playbackState.value.copyWith(
-        shuffleMode: shuffleMode,
-        updatePosition: _player.position, // FIX BUG: Update posisi realtime
-      ));
+      _broadcastState(_player.playbackEvent); 
     });
 
     await _player.setAudioSource(_playlist);
@@ -140,13 +127,43 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> skipToQueueItem(int index) async {
     if (index < 0 || index >= queue.value.length) return;
+    
+    mediaItem.add(queue.value[index]);
     await _player.seek(Duration.zero, index: index);
   }
 
-  // MENGEMBALIKAN FITUR DRAG AND DROP QUEUE YANG TERLEWAT
   @override
   Future<void> customAction(String name, [Map<String, dynamic>? extras]) async {
-    if (name == 'reorder' && extras != null) {
+    if (name.startsWith('shuffle')) {
+      final enable = !_player.shuffleModeEnabled;
+      await setShuffleMode(enable ? AudioServiceShuffleMode.all : AudioServiceShuffleMode.none);
+    } else if (name.startsWith('repeat')) {
+      final current = _player.loopMode;
+      if (current == LoopMode.off) {
+        await setRepeatMode(AudioServiceRepeatMode.all);
+      } else if (current == LoopMode.all) {
+        await setRepeatMode(AudioServiceRepeatMode.one);
+      } else {
+        await setRepeatMode(AudioServiceRepeatMode.none);
+      }
+    } else if (name.startsWith('like')) {
+      // LOGIKA UNTUK LIKE/UNLIKE DARI LOCKSCREEN
+      final currentMedia = mediaItem.value;
+      if (currentMedia != null) {
+        final songId = currentMedia.extras?['id']?.toString();
+        if (songId != null) {
+          final song = LocalSongModel(
+            id: songId,
+            title: currentMedia.title,
+            artist: currentMedia.artist ?? 'Unknown',
+            uri: currentMedia.id,
+            duration: currentMedia.duration?.inMilliseconds ?? 0,
+          );
+          await StorageService.toggleLike(song);
+          _broadcastState(_player.playbackEvent); // Memaksa update icon notifikasi
+        }
+      }
+    } else if (name == 'reorder' && extras != null) {
       final oldIndex = extras['oldIndex'] as int;
       var newIndex = extras['newIndex'] as int;
 
@@ -173,12 +190,48 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   void _broadcastState(PlaybackEvent event) {
+    final loopMode = _player.loopMode;
+    final shuffleModeEnabled = _player.shuffleModeEnabled;
+
+    final songId = mediaItem.value?.extras?['id']?.toString() ?? '';
+    final isLiked = StorageService.isLiked(songId); // Mengecek status Hive Database
+
+    final likeControl = MediaControl.custom(
+      androidIcon: isLiked ? 'drawable/ic_favorite_on' : 'drawable/ic_favorite_off',
+      label: 'Like',
+      name: isLiked ? 'like_on' : 'like_off', // Cache Busting untuk Android
+    );
+
+    final shuffleIcon = shuffleModeEnabled ? 'drawable/ic_shuffle_on' : 'drawable/ic_shuffle_off';
+    final repeatIcon = loopMode == LoopMode.one 
+        ? 'drawable/ic_repeat_one_on' 
+        : loopMode == LoopMode.all 
+            ? 'drawable/ic_repeat_on' 
+            : 'drawable/ic_repeat_off';
+
+    final shuffleControl = MediaControl.custom(
+      androidIcon: shuffleIcon,
+      label: 'Shuffle',
+      name: shuffleModeEnabled ? 'shuffle_on' : 'shuffle_off',
+    );
+
+    final repeatControl = MediaControl.custom(
+      androidIcon: repeatIcon,
+      label: 'Repeat',
+      name: loopMode == LoopMode.one 
+          ? 'repeat_one' 
+          : loopMode == LoopMode.all 
+              ? 'repeat_all' 
+              : 'repeat_off',
+    );
+
     playbackState.add(playbackState.value.copyWith(
       controls: [
-        MediaControl.skipToPrevious,
-        if (_player.playing) MediaControl.pause else MediaControl.play,
-        MediaControl.stop,
-        MediaControl.skipToNext,
+        likeControl, // MENAMBAHKAN TOMBOL LIKE DI PALING KIRI
+        MediaControl.skipToPrevious, 
+        if (_player.playing) MediaControl.pause else MediaControl.play, 
+        MediaControl.skipToNext, 
+        repeatControl, 
       ],
       systemActions: const {
         MediaAction.seek,
@@ -187,7 +240,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         MediaAction.setShuffleMode,
         MediaAction.setRepeatMode,
       },
-      androidCompactActionIndices: const [0, 1, 3],
+      androidCompactActionIndices: const [1, 2, 3], // Index [1,2,3] = Prev, Play/Pause, Next untuk Compact View
       processingState: const {
         ProcessingState.idle: AudioProcessingState.idle,
         ProcessingState.loading: AudioProcessingState.loading,
@@ -200,6 +253,13 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
       queueIndex: event.currentIndex,
+      
+      shuffleMode: shuffleModeEnabled ? AudioServiceShuffleMode.all : AudioServiceShuffleMode.none,
+      repeatMode: loopMode == LoopMode.one 
+          ? AudioServiceRepeatMode.one 
+          : loopMode == LoopMode.all 
+              ? AudioServiceRepeatMode.all 
+              : AudioServiceRepeatMode.none,
     ));
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:lottie/lottie.dart'; // IMPORT LOTTIE DITAMBAHKAN
 import '../providers/audio_state_provider.dart';
 import '../providers/queue_provider.dart';
 import '../core/audio_handler.dart';
@@ -21,6 +22,7 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
 
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   int _queueRenderLimit = 20;
+  bool _showLikeAnimation = false; // STATE UNTUK TRIGGER LOTTIE
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
@@ -43,16 +45,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // KONTEN PLAYER UTAMA
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             bottom: MediaQuery.of(context).size.height * 0.09,
-            // Detektor untuk Swipe-Down to Close
             child: GestureDetector(
               onVerticalDragEnd: (details) {
-                // Jika di-swipe ke bawah dengan kecepatan tinggi
                 if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
                   Navigator.pop(context);
                 }
@@ -126,7 +125,25 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                Center(child: artworkWidget),
+                                // PERUBAHAN: MEMBUNGKUS ARTWORK DENGAN STACK UNTUK LOTTIE OVERLAY
+                                Center(
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      artworkWidget,
+                                      if (_showLikeAnimation)
+                                        IgnorePointer(
+                                          child: Lottie.asset(
+                                            'assets/animations/love.json',
+                                            width: 250,
+                                            height: 250,
+                                            repeat: false,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
                                 Column(
                                   children: [
                                     Text(
@@ -235,10 +252,24 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                       icon: const Icon(Icons.timer_outlined),
                                       onPressed: () => _showSleepTimer(context, ref),
                                     ),
+                                    // PERUBAHAN: LOGIKA TRIGGER ANIMASI LOTTIE SAAT DISUKAI
                                     IconButton(
                                       icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border),
                                       color: isLiked ? Colors.red : Colors.grey,
                                       onPressed: () {
+                                        if (!isLiked) {
+                                          setState(() {
+                                            _showLikeAnimation = true;
+                                          });
+                                          // Menghilangkan animasi setelah 2 detik (sesuai durasi wajar lottie)
+                                          Future.delayed(const Duration(milliseconds: 2000), () {
+                                            if (mounted) {
+                                              setState(() {
+                                                _showLikeAnimation = false;
+                                              });
+                                            }
+                                          });
+                                        }
                                         final song = LocalSongModel(
                                           id: mediaItem.extras?['id'] ?? '0',
                                           title: mediaItem.title,
@@ -265,7 +296,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             ),
           ),
 
-          // UP NEXT QUEUE DRAG SHEET
+          // QUEUE BOTTOM SHEET
           DraggableScrollableSheet(
             initialChildSize: 0.09,
             minChildSize: 0.09,

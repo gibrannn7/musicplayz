@@ -63,14 +63,64 @@ final mostPlayedProvider = Provider<List<LocalSongModel>>((ref) {
   final library = ref.watch(libraryProvider).value ?? [];
   final filtered = library.where((s) => s.playCount > 0).toList();
   filtered.sort((a, b) => b.playCount.compareTo(a.playCount));
-  return filtered.take(10).toList();
+  return filtered.take(10).toList(); 
 });
 
 final recentlyPlayedProvider = Provider<List<LocalSongModel>>((ref) {
   final library = ref.watch(libraryProvider).value ?? [];
   final filtered = library.where((s) => s.lastPlayed != null).toList();
   filtered.sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
-  return filtered.take(10).toList();
+  return filtered.take(10).toList(); 
+});
+
+// TASK 1: HISTORY DIBATASI MAKSIMAL 50
+final fullHistoryProvider = Provider<List<LocalSongModel>>((ref) {
+  final library = ref.watch(libraryProvider).value ?? [];
+  final filtered = library.where((s) => s.lastPlayed != null).toList();
+  filtered.sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
+  return filtered.take(50).toList(); 
+});
+
+final top50Provider = Provider<List<LocalSongModel>>((ref) {
+  final library = ref.watch(libraryProvider).value ?? [];
+  final filtered = library.where((s) => s.playCount > 0).toList();
+  filtered.sort((a, b) => b.playCount.compareTo(a.playCount));
+  return filtered.take(50).toList();
+});
+
+final artistsProvider = Provider<List<String>>((ref) {
+  final library = ref.watch(libraryProvider).value ?? [];
+  final artists = library.map((s) => s.artist).where((a) => a != '<unknown>' && a.trim().isNotEmpty).toSet().toList();
+  artists.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return artists;
+});
+
+final artistSongsProvider = Provider.family<List<LocalSongModel>, String>((ref, artistName) {
+  final library = ref.watch(libraryProvider).value ?? [];
+  return library.where((s) => s.artist == artistName).toList();
+});
+
+final albumsProvider = FutureProvider<List<AlbumModel>>((ref) async {
+  final query = ref.read(audioQueryProvider);
+  return await query.queryAlbums();
+});
+
+// TASK 1: PERBAIKAN MATCHER ALBUM AGAR TIDAK KOSONG
+final albumSongsProvider = FutureProvider.family<List<LocalSongModel>, int>((ref, albumId) async {
+  final query = ref.read(audioQueryProvider);
+  final rawSongs = await query.queryAudiosFrom(AudiosFromType.ALBUM, albumId);
+  final library = ref.read(libraryProvider).value ?? [];
+
+  return rawSongs.map((rs) {
+    try {
+      // Fallback pencocokan yang lebih kuat: Jika ID OS berbeda, cocokkan berdasarkan Judul
+      return library.firstWhere(
+        (ls) => ls.id == rs.id.toString() || ls.title == rs.title
+      );
+    } catch (e) {
+      return null;
+    }
+  }).whereType<LocalSongModel>().toList();
 });
 
 final filteredLibraryProvider = Provider<List<LocalSongModel>>((ref) {

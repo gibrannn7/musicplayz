@@ -7,6 +7,8 @@ import '../widgets/song_tile.dart';
 import '../core/audio_handler.dart';
 import '../models/song_model.dart';
 import 'search_screen.dart';
+import 'history_screen.dart';
+import 'top_songs_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -66,13 +68,27 @@ class HomeScreen extends ConsumerWidget {
                 if (recentlyPlayed.isNotEmpty)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: _buildHorizontalSection(context, ref, 'Recently Played', recentlyPlayed, isSquare: false),
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: _buildHorizontalSection(
+                        context, 
+                        ref, 
+                        'Recently Played', 
+                        recentlyPlayed, 
+                        isSquare: false,
+                        onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
+                      ),
                     ),
                   ),
                 if (mostPlayed.isNotEmpty)
                   SliverToBoxAdapter(
-                    child: _buildHorizontalSection(context, ref, 'Most Played', mostPlayed, isSquare: true),
+                    child: _buildHorizontalSection(
+                      context, 
+                      ref, 
+                      'Most Played', 
+                      mostPlayed, 
+                      isSquare: true,
+                      onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopSongsScreen())),
+                    ),
                   ),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -81,8 +97,6 @@ class HomeScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('All Songs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        
-                        // PERUBAHAN DESAIN FILTER MENJADI PREMIUM PILL
                         PopupMenuButton<SongSortType>(
                           initialValue: currentSort,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -143,8 +157,6 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        // AKHIR PERUBAHAN DESAIN FILTER
-                        
                       ],
                     ),
                   ),
@@ -173,13 +185,23 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHorizontalSection(BuildContext context, WidgetRef ref, String title, List<LocalSongModel> items, {required bool isSquare}) {
+  Widget _buildHorizontalSection(BuildContext context, WidgetRef ref, String title, List<LocalSongModel> items, {required bool isSquare, VoidCallback? onSeeAll}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              if (onSeeAll != null)
+                GestureDetector(
+                  onTap: onSeeAll,
+                  child: Text('See All', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                ),
+            ],
+          ),
         ),
         SizedBox(
           height: isSquare ? 150 : 120,

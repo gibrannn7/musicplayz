@@ -5,13 +5,13 @@ void showPremiumModal(BuildContext context, {required Widget child}) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
-    isScrollControlled: true, // Memastikan modal bisa naik saat keyboard muncul
+    isScrollControlled: true, 
     builder: (context) {
       return BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom, // Padding dinamis sesuai tinggi keyboard
+            bottom: MediaQuery.of(context).viewInsets.bottom, 
           ),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface.withOpacity(0.85),
@@ -20,7 +20,7 @@ void showPremiumModal(BuildContext context, {required Widget child}) {
           ),
           child: SafeArea(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min, // Kunci agar tidak full screen
               children: [
                 const SizedBox(height: 12),
                 Container(
@@ -32,8 +32,7 @@ void showPremiumModal(BuildContext context, {required Widget child}) {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Flexible adalah kunci agar tidak terjadi OVERFLOW
-                Flexible(child: child), 
+                child, // Dihapus Flexible-nya
               ],
             ),
           ),

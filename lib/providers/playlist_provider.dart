@@ -4,11 +4,17 @@ import '../models/playlist_model.dart';
 import '../services/storage_service.dart';
 
 class LikedSongsNotifier extends StateNotifier<List<LocalSongModel>> {
-  LikedSongsNotifier() : super(StorageService.getLikedSongs());
+  LikedSongsNotifier() : super(StorageService.getLikedSongs()) {
+    // PERBAIKAN ARSITEKTUR: Riverpod sekarang memantau Hive di background
+    // Saat Anda nge-Like dari Notifikasi/Lockscreen, UI akan terupdate instan!
+    StorageService.watchLikedSongs().listen((_) {
+      state = StorageService.getLikedSongs();
+    });
+  }
 
   Future<void> toggleLike(LocalSongModel song) async {
     await StorageService.toggleLike(song);
-    state = StorageService.getLikedSongs();
+    // State otomatis diupdate oleh listener stream di atas
   }
 }
 

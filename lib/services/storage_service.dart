@@ -11,6 +11,9 @@ class StorageService {
   static Box<PlaylistModel> get _playlistsBox => Hive.box<PlaylistModel>(playlistsBoxName);
   static Box<LocalSongModel> get _metadataBox => Hive.box<LocalSongModel>(metadataBoxName);
 
+  // BARIS BARU: Stream untuk mendengarkan perubahan Hive secara Live
+  static Stream<BoxEvent> watchLikedSongs() => _likedSongsBox.watch();
+
   static LocalSongModel? getSongMetadata(String id) {
     return _metadataBox.get(id);
   }
