@@ -23,13 +23,19 @@ class LocalSongModelAdapter extends TypeAdapter<LocalSongModel> {
       uri: fields[3] as String,
       duration: fields[4] as int,
       isLiked: fields[5] as bool,
+      playCount: fields[6] as int,
+      lastPlayed: fields[7] as DateTime?,
+      customTitle: fields[8] as String?,
+      customArtist: fields[9] as String?,
+      customCoverPath: fields[10] as String?,
+      dateAdded: fields[11] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, LocalSongModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +47,19 @@ class LocalSongModelAdapter extends TypeAdapter<LocalSongModel> {
       ..writeByte(4)
       ..write(obj.duration)
       ..writeByte(5)
-      ..write(obj.isLiked);
+      ..write(obj.isLiked)
+      ..writeByte(6)
+      ..write(obj.playCount)
+      ..writeByte(7)
+      ..write(obj.lastPlayed)
+      ..writeByte(8)
+      ..write(obj.customTitle)
+      ..writeByte(9)
+      ..write(obj.customArtist)
+      ..writeByte(10)
+      ..write(obj.customCoverPath)
+      ..writeByte(11)
+      ..write(obj.dateAdded);
   }
 
   @override

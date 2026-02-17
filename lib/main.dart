@@ -7,22 +7,21 @@ import 'models/song_model.dart';
 import 'models/playlist_model.dart';
 import 'screens/main_navigation.dart';
 import 'core/theme.dart';
+import 'widgets/premium_background.dart';
 
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize Hive
     await Hive.initFlutter();
     
-    // Register adapters only if not registered
     if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(LocalSongModelAdapter());
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(PlaylistModelAdapter());
     
     await Hive.openBox<LocalSongModel>('liked_songs');
     await Hive.openBox<PlaylistModel>('playlists');
+    await Hive.openBox<LocalSongModel>('song_metadata');
 
-    // Initialize Audio Service
     final audioHandler = await AudioService.init(
       builder: () => MyAudioHandler(),
       config: const AudioServiceConfig(
@@ -43,7 +42,6 @@ void main() async {
     );
   } catch (e) {
     debugPrint('Initialization Error: $e');
-    // Fallback if initialization fails
     runApp(MaterialApp(home: Scaffold(body: Center(child: Text('Error: $e')))));
   }
 }
@@ -56,9 +54,19 @@ class MusicPlayzApp extends StatelessWidget {
     return MaterialApp(
       title: 'musicplayz',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      // Memaksa scaffold menjadi transparan agar background global terlihat
+      theme: AppTheme.lightTheme.copyWith(scaffoldBackgroundColor: Colors.transparent),
+      darkTheme: AppTheme.darkTheme.copyWith(scaffoldBackgroundColor: Colors.transparent),
       themeMode: ThemeMode.system,
+      // Trik Global Background:
+      builder: (context, child) {
+        return Stack(
+          children: [
+            const PremiumBackground(),
+            if (child != null) child,
+          ],
+        );
+      },
       home: const MainNavigation(),
     );
   }

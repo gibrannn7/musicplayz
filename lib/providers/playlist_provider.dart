@@ -38,6 +38,11 @@ class PlaylistNotifier extends StateNotifier<List<PlaylistModel>> {
     await StorageService.removeSongFromPlaylist(playlistId, songId);
     state = StorageService.getPlaylists();
   }
+
+  Future<void> updatePlaylistCover(String id, String imagePath) async {
+    await StorageService.updatePlaylistCover(id, imagePath);
+    state = StorageService.getPlaylists();
+  }
 }
 
 final playlistProvider = StateNotifierProvider<PlaylistNotifier, List<PlaylistModel>>((ref) {
