@@ -49,7 +49,7 @@ class MiniPlayer extends ConsumerWidget {
 
         Widget artworkWidget;
         if (customCoverPath != null && File(customCoverPath).existsSync()) {
-          artworkWidget = Image.file(File(customCoverPath), width: 48, height: 48, fit: BoxFit.cover);
+          artworkWidget = Image.file(File(customCoverPath), width: 48, height: 48, fit: BoxFit.cover, cacheWidth: 150,);
         } else {
           artworkWidget = QueryArtworkWidget(
             id: int.parse(songId),

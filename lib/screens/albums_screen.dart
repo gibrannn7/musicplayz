@@ -24,18 +24,19 @@ class AlbumsScreen extends ConsumerWidget {
             slivers: [
               SliverAppBar(
                 pinned: true,
+                expandedHeight: 110,
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
-                elevation: 0,
                 flexibleSpace: ClipRRect(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+                    child: FlexibleSpaceBar(
+                      titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                      title: const Text('Albums', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+                      background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
                     ),
                   ),
                 ),
-                title: const Text('Albums', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               SliverPadding(
                 padding: const EdgeInsets.all(16).copyWith(bottom: 140),

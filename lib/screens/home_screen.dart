@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // IMPORT BARU: UNTUK GETARAN (HAPTIC FEEDBACK)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import '../providers/library_provider.dart';
@@ -10,11 +11,63 @@ import 'search_screen.dart';
 import 'history_screen.dart';
 import 'top_songs_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final ScrollController _scrollController = ScrollController();
+  String? _draggingLetter; 
+  final List<String> _alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split('');
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToLetter(String letter, List<LocalSongModel> songs) {
+    int index = -1;
+    if (letter == '#') {
+      index = songs.indexWhere((s) => s.title.isNotEmpty && !RegExp(r'[a-zA-Z]').hasMatch(s.title[0]));
+    } else {
+      index = songs.indexWhere((s) => s.title.toUpperCase().startsWith(letter));
+    }
+
+    if (index != -1) {
+      final recentlyPlayed = ref.read(recentlyPlayedProvider);
+      final mostPlayed = ref.read(mostPlayedProvider);
+      
+      double startY = 110.0 + 54.0; 
+      if (recentlyPlayed.isNotEmpty) startY += 190.0;
+      if (mostPlayed.isNotEmpty) startY += 212.0;
+
+      // ListTile tinggi standarnya sekitar 72px
+      final offset = startY + (index * 72.0); 
+      _scrollController.jumpTo(offset.clamp(0.0, _scrollController.position.maxScrollExtent));
+    }
+  }
+
+  void _updateDraggingLetter(double dy, double maxHeight, List<LocalSongModel> songs) {
+    int index = (dy / maxHeight * _alphabets.length).clamp(0, _alphabets.length - 1).toInt();
+    final letter = _alphabets[index];
+    
+    if (_draggingLetter != letter) {
+      // BEST PRACTICE: Memberikan getaran halus setiap jari berpindah huruf!
+      HapticFeedback.selectionClick(); 
+      
+      setState(() {
+        _draggingLetter = letter;
+      });
+      _scrollToLetter(letter, songs);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final libraryAsync = ref.watch(libraryProvider);
     final recentlyPlayed = ref.watch(recentlyPlayedProvider);
     final mostPlayed = ref.watch(mostPlayedProvider);
@@ -32,149 +85,189 @@ class HomeScreen extends ConsumerWidget {
             onRefresh: () async {
               await ref.read(libraryProvider.notifier).loadLibrary();
             },
-            child: CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  floating: true,
-                  pinned: true,
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  elevation: 0,
-                  flexibleSpace: ClipRRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+            child: Stack(
+              children: [
+                CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      expandedHeight: 110, 
+                      backgroundColor: Colors.transparent,
+                      surfaceTintColor: Colors.transparent,
+                      flexibleSpace: ClipRRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: FlexibleSpaceBar(
+                            titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                            title: const Text(
+                              'MusicPlayz', 
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, letterSpacing: -0.5)
+                            ),
+                            background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                    
+                    if (recentlyPlayed.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: _buildHorizontalSection(
+                            context, ref, 'Recently Played', recentlyPlayed, 
+                            isSquare: false,
+                            onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
+                          ),
+                        ),
+                      ),
+                    
+                    if (mostPlayed.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: _buildHorizontalSection(
+                          context, ref, 'Most Played', mostPlayed, 
+                          isSquare: true,
+                          onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopSongsScreen())),
+                        ),
+                      ),
+                    
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('All Songs', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                            
+                            PopupMenuButton<SongSortType>(
+                              initialValue: currentSort,
+                              icon: Icon(Icons.sort, color: Theme.of(context).colorScheme.primary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.95),
+                              position: PopupMenuPosition.under,
+                              onSelected: (val) => ref.read(sortTypeProvider.notifier).state = val,
+                              itemBuilder: (context) => [
+                                _buildPopupItem(context, SongSortType.az, 'A to Z', currentSort),
+                                _buildPopupItem(context, SongSortType.newest, 'Newest', currentSort),
+                                _buildPopupItem(context, SongSortType.oldest, 'Oldest', currentSort),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  title: Row(
-                    children: [
-                      Image.asset('assets/images/logo.png', height: 30, errorBuilder: (c, e, s) => const Icon(Icons.music_note)),
-                      const SizedBox(width: 12),
-                      const Text('MusicPlayz', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
-                      },
+                    
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        bottom: 140, 
+                        // Jika mode AZ, kurangi padding kanan seukuran scroller (30px) + sedikit gap (2px)
+                        right: currentSort == SongSortType.az ? 32 : 0 
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return SongTile(
+                              song: filteredLibrary[index],
+                              onTap: () => _playList(ref, filteredLibrary, index),
+                            );
+                          },
+                          childCount: filteredLibrary.length,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                
-                if (recentlyPlayed.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: _buildHorizontalSection(
-                        context, 
-                        ref, 
-                        'Recently Played', 
-                        recentlyPlayed, 
-                        isSquare: false,
-                        onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
+
+                // WIDGET A-Z SCROLLER YANG DIPERBESAR DAN ANTI OVERFLOW
+                if (currentSort == SongSortType.az)
+                  AnimatedBuilder(
+                    animation: _scrollController,
+                    builder: (context, child) {
+                      double offset = 0.0;
+                      if (_scrollController.hasClients) {
+                        offset = _scrollController.offset;
+                      }
+
+                      double startY = 110.0 + 54.0; 
+                      if (recentlyPlayed.isNotEmpty) startY += 190.0;
+                      if (mostPlayed.isNotEmpty) startY += 212.0;
+
+                      double pinnedY = MediaQuery.of(context).size.height * 0.18; // Naik sedikit agar pas di tengah
+                      double topPosition = (startY - offset) > pinnedY ? (startY - offset) : pinnedY;
+
+                      return Positioned(
+                        right: 2, // Mepet kanan
+                        top: topPosition,
+                        height: 480, // TINGGI DIPERBESAR untuk mencegah Bottom Overflow
+                        child: child!,
+                      );
+                    },
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return GestureDetector(
+                          onVerticalDragStart: (details) => _updateDraggingLetter(details.localPosition.dy, constraints.maxHeight, filteredLibrary),
+                          onVerticalDragUpdate: (details) => _updateDraggingLetter(details.localPosition.dy, constraints.maxHeight, filteredLibrary),
+                          onVerticalDragEnd: (_) => setState(() => _draggingLetter = null),
+                          onTapCancel: () => setState(() => _draggingLetter = null),
+                          child: Container(
+                            width: 30, // LEBAR DIPERBESAR (sebelumnya 24) agar lebih mudah disentuh
+                            color: Colors.transparent, 
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: _alphabets.map((letter) {
+                                final isSelected = _draggingLetter == letter;
+                                return Text(
+                                  letter, 
+                                  style: TextStyle(
+                                    // FONT DIPERBESAR
+                                    fontSize: isSelected ? 15 : 11, 
+                                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold, 
+                                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.withOpacity(0.8)
+                                  )
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+
+                // BUBBLE OVERLAY
+                if (_draggingLetter != null)
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.95),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                        ],
+                        border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.5), width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _draggingLetter!,
+                        style: TextStyle(
+                          fontSize: 40, 
+                          fontWeight: FontWeight.bold, 
+                          color: Theme.of(context).colorScheme.primary
+                        ),
                       ),
                     ),
                   ),
-                if (mostPlayed.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: _buildHorizontalSection(
-                      context, 
-                      ref, 
-                      'Most Played', 
-                      mostPlayed, 
-                      isSquare: true,
-                      onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopSongsScreen())),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('All Songs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        PopupMenuButton<SongSortType>(
-                          initialValue: currentSort,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.95),
-                          elevation: 8,
-                          position: PopupMenuPosition.under,
-                          onSelected: (val) => ref.read(sortTypeProvider.notifier).state = val,
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: SongSortType.az,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.sort_by_alpha, color: currentSort == SongSortType.az ? Theme.of(context).colorScheme.primary : Colors.grey),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'A to Z', 
-                                    style: TextStyle(
-                                      color: currentSort == SongSortType.az ? Theme.of(context).colorScheme.primary : null, 
-                                      fontWeight: currentSort == SongSortType.az ? FontWeight.bold : FontWeight.normal
-                                    )
-                                  ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: SongSortType.dateAdded,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.access_time, color: currentSort == SongSortType.dateAdded ? Theme.of(context).colorScheme.primary : Colors.grey),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Newest Added', 
-                                    style: TextStyle(
-                                      color: currentSort == SongSortType.dateAdded ? Theme.of(context).colorScheme.primary : null, 
-                                      fontWeight: currentSort == SongSortType.dateAdded ? FontWeight.bold : FontWeight.normal
-                                    )
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(currentSort == SongSortType.az ? Icons.sort_by_alpha : Icons.access_time, size: 18),
-                                const SizedBox(width: 8),
-                                Text(currentSort == SongSortType.az ? 'A-Z' : 'Newest', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.keyboard_arrow_down, size: 20),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 140),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return SongTile(
-                          song: filteredLibrary[index],
-                          onTap: () => _playList(ref, filteredLibrary, index),
-                        );
-                      },
-                      childCount: filteredLibrary.length,
-                    ),
-                  ),
-                ),
               ],
             ),
           );
@@ -185,16 +278,28 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  PopupMenuItem<SongSortType> _buildPopupItem(BuildContext context, SongSortType value, String label, SongSortType current) {
+    final isSelected = current == value;
+    final color = isSelected ? Theme.of(context).colorScheme.primary : Colors.grey;
+    return PopupMenuItem(
+      value: value,
+      child: Text(
+        label, 
+        style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)
+      ),
+    );
+  }
+
   Widget _buildHorizontalSection(BuildContext context, WidgetRef ref, String title, List<LocalSongModel> items, {required bool isSquare, VoidCallback? onSeeAll}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               if (onSeeAll != null)
                 GestureDetector(
                   onTap: onSeeAll,
@@ -207,7 +312,7 @@ class HomeScreen extends ConsumerWidget {
           height: isSquare ? 150 : 120,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             itemCount: items.length,
             itemBuilder: (context, index) {
               final song = items[index];
@@ -215,9 +320,9 @@ class HomeScreen extends ConsumerWidget {
                 onTap: () => _playList(ref, items, index),
                 child: Container(
                   width: isSquare ? 110 : 200,
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  margin: const EdgeInsets.only(right: 12.0),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     image: DecorationImage(
                       image: AssetImage(isSquare ? 'assets/images/Abstract_dark_bg.jpg' : 'assets/images/Vinyl_record.jpg'),
                       fit: BoxFit.cover,
@@ -261,7 +366,6 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _playList(WidgetRef ref, List<LocalSongModel> playlist, int initialIndex) async {
     final handler = ref.read(audioHandlerProvider);
     final mediaItems = playlist.map((s) => s.toMediaItem()).toList();
-    
     await handler.updateQueue(mediaItems);
     await handler.skipToQueueItem(initialIndex);
     await handler.play();

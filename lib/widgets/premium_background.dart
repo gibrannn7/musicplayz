@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class PremiumBackground extends StatefulWidget {
@@ -17,7 +16,7 @@ class _PremiumBackgroundState extends State<PremiumBackground> with SingleTicker
     super.initState();
     _controller = AnimationController(
       vsync: this, 
-      duration: const Duration(seconds: 15),
+      duration: const Duration(seconds: 20), // Diperlambat agar lebih elegan dan hemat CPU
     )..repeat(reverse: true);
   }
 
@@ -29,56 +28,74 @@ class _PremiumBackgroundState extends State<PremiumBackground> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF0F0F13), 
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Stack(
-            children: [
-              Positioned(
-                top: MediaQuery.of(context).size.height * 0.1 + (sin(_controller.value * pi * 2) * 80),
-                left: MediaQuery.of(context).size.width * 0.1 + (cos(_controller.value * pi * 2) * 80),
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+    // Gunakan RepaintBoundary agar animasi background tidak memicu render ulang UI lain
+    return RepaintBoundary(
+      child: Container(
+        color: const Color(0xFF0F0F13), 
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Stack(
+              children: [
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.1 + (sin(_controller.value * pi * 2) * 80),
+                  left: MediaQuery.of(context).size.width * 0.1 + (cos(_controller.value * pi * 2) * 80),
+                  child: Container(
+                    width: 400,
+                    height: 400,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      // PENGGANTI BLUR: Gunakan RadialGradient agar GPU tidak tersiksa
+                      gradient: RadialGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.1, 1.0],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                bottom: MediaQuery.of(context).size.height * 0.2 + (cos(_controller.value * pi * 2) * 60),
-                right: MediaQuery.of(context).size.width * 0.1 + (sin(_controller.value * pi * 2) * 60),
-                child: Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.deepPurpleAccent.withOpacity(0.2),
+                Positioned(
+                  bottom: MediaQuery.of(context).size.height * 0.2 + (cos(_controller.value * pi * 2) * 60),
+                  right: MediaQuery.of(context).size.width * 0.1 + (sin(_controller.value * pi * 2) * 60),
+                  child: Container(
+                    width: 350,
+                    height: 350,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.deepPurpleAccent.withOpacity(0.25),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.1, 1.0],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).size.height * 0.4 + (sin(_controller.value * pi) * 40),
-                right: MediaQuery.of(context).size.width * 0.3 + (cos(_controller.value * pi) * 40),
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.blueAccent.withOpacity(0.15),
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.4 + (sin(_controller.value * pi) * 40),
+                  right: MediaQuery.of(context).size.width * 0.3 + (cos(_controller.value * pi) * 40),
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.blueAccent.withOpacity(0.2),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.1, 1.0],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-                child: Container(color: Colors.transparent),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }

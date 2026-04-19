@@ -4,7 +4,7 @@ import '../core/permission_handler.dart';
 import '../models/song_model.dart';
 import '../services/storage_service.dart';
 
-enum SongSortType { az, dateAdded }
+enum SongSortType { az, newest, oldest } // PERBAIKAN: Hanya 3 mode ini
 
 final sortTypeProvider = StateProvider<SongSortType>((ref) => SongSortType.az);
 final audioQueryProvider = Provider((ref) => OnAudioQuery());
@@ -73,7 +73,6 @@ final recentlyPlayedProvider = Provider<List<LocalSongModel>>((ref) {
   return filtered.take(10).toList(); 
 });
 
-// TASK 1: HISTORY DIBATASI MAKSIMAL 50
 final fullHistoryProvider = Provider<List<LocalSongModel>>((ref) {
   final library = ref.watch(libraryProvider).value ?? [];
   final filtered = library.where((s) => s.lastPlayed != null).toList();
@@ -105,7 +104,6 @@ final albumsProvider = FutureProvider<List<AlbumModel>>((ref) async {
   return await query.queryAlbums();
 });
 
-// TASK 1: PERBAIKAN MATCHER ALBUM AGAR TIDAK KOSONG
 final albumSongsProvider = FutureProvider.family<List<LocalSongModel>, int>((ref, albumId) async {
   final query = ref.read(audioQueryProvider);
   final rawSongs = await query.queryAudiosFrom(AudiosFromType.ALBUM, albumId);
@@ -113,16 +111,14 @@ final albumSongsProvider = FutureProvider.family<List<LocalSongModel>, int>((ref
 
   return rawSongs.map((rs) {
     try {
-      // Fallback pencocokan yang lebih kuat: Jika ID OS berbeda, cocokkan berdasarkan Judul
-      return library.firstWhere(
-        (ls) => ls.id == rs.id.toString() || ls.title == rs.title
-      );
+      return library.firstWhere((ls) => ls.id == rs.id.toString() || ls.title == rs.title);
     } catch (e) {
       return null;
     }
   }).whereType<LocalSongModel>().toList();
 });
 
+// PERBAIKAN: Logika Filtering Terbaru
 final filteredLibraryProvider = Provider<List<LocalSongModel>>((ref) {
   final library = ref.watch(libraryProvider).value ?? [];
   final sortType = ref.watch(sortTypeProvider);
@@ -130,8 +126,10 @@ final filteredLibraryProvider = Provider<List<LocalSongModel>>((ref) {
   final list = List<LocalSongModel>.from(library);
   if (sortType == SongSortType.az) {
     list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-  } else if (sortType == SongSortType.dateAdded) {
+  } else if (sortType == SongSortType.newest) {
     list.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+  } else if (sortType == SongSortType.oldest) {
+    list.sort((a, b) => a.dateAdded.compareTo(b.dateAdded));
   }
   return list;
 });

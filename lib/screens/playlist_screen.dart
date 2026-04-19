@@ -19,33 +19,34 @@ class PlaylistScreen extends ConsumerWidget {
     final playlists = ref.watch(playlistProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Tembus ke Aura
+      backgroundColor: Colors.transparent, 
       body: CustomScrollView(
         slivers: [
-          // HEADER KACA (GLASSMORPHISM)
+          // PREMIUM HEADER ANTI-JENONG (Konsisten dengan layar lain)
           SliverAppBar(
             pinned: true,
+            expandedHeight: 110,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
-            elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+                child: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  title: const Text('Your Playlists', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+                  background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
                 ),
               ),
             ),
-            title: const Text('Your Playlists', style: TextStyle(fontWeight: FontWeight.bold)),
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
                 onPressed: () => _showCreatePlaylistDialog(context, ref),
               ),
+              const SizedBox(width: 8),
             ],
           ),
 
-          // KONTEN GRID
           playlists.isEmpty
               ? const SliverFillRemaining(
                   child: Center(child: Text('No playlists created yet', style: TextStyle(color: Colors.grey))),
@@ -80,16 +81,13 @@ class PlaylistScreen extends ConsumerWidget {
                             child: Stack(
                               children: [
                                 Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
+                                  bottom: 0, left: 0, right: 0,
                                   child: Container(
                                     padding: const EdgeInsets.all(12.0),
                                     decoration: BoxDecoration(
                                       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
                                       gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
+                                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                         colors: [Colors.transparent, Colors.black.withOpacity(0.8), Colors.black],
                                       ),
                                     ),
@@ -99,8 +97,7 @@ class PlaylistScreen extends ConsumerWidget {
                                         Text(
                                           playlist.name,
                                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1, overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
                                         Text('${playlist.songs.length} songs', style: const TextStyle(color: Colors.grey, fontSize: 12)),
@@ -109,8 +106,7 @@ class PlaylistScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Positioned(
-                                  top: 8,
-                                  right: 8,
+                                  top: 8, right: 8,
                                   child: GestureDetector(
                                     onTap: () => _showPlaylistOptions(context, ref, playlist),
                                     child: Container(
@@ -158,8 +154,8 @@ class PlaylistScreen extends ConsumerWidget {
             leading: const Icon(Icons.delete, color: Colors.red),
             title: const Text('Delete Playlist', style: TextStyle(color: Colors.red)),
             onTap: () {
-              Navigator.pop(context); // Tutup bottom sheet opsi
-              _showDeleteConfirmationDialog(context, ref, playlist); // Tampilkan Dialog Konfirmasi
+              Navigator.pop(context); 
+              _showDeleteConfirmationDialog(context, ref, playlist); 
             },
           ),
           const SizedBox(height: 20),
@@ -168,7 +164,6 @@ class PlaylistScreen extends ConsumerWidget {
     );
   }
 
-  // DIALOG KONFIRMASI HAPUS PLAYLIST
   void _showDeleteConfirmationDialog(BuildContext context, WidgetRef ref, PlaylistModel playlist) {
     showDialog(
       context: context,
@@ -177,22 +172,13 @@ class PlaylistScreen extends ConsumerWidget {
         title: const Text('Delete Playlist'),
         content: Text('Are you sure you want to delete "${playlist.name}"? This action cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () {
               ref.read(playlistProvider.notifier).deletePlaylist(playlist.id);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Playlist deleted successfully')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Playlist deleted successfully')));
             },
             child: const Text('Delete'),
           ),
@@ -230,10 +216,7 @@ class PlaylistScreen extends ConsumerWidget {
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () {
                     if (controller.text.trim().isNotEmpty) {
                       ref.read(playlistProvider.notifier).createPlaylist(controller.text.trim());
@@ -270,7 +253,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Membiarkan Aura Tembus
+      backgroundColor: Colors.transparent, 
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -327,8 +310,6 @@ class PlaylistDetailScreen extends ConsumerWidget {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final song = playlist.songs[index];
-                        
-                        // MENAMBAHKAN FITUR SWIPE TO DISMISS UNTUK HAPUS LAGU DARI PLAYLIST
                         return Dismissible(
                           key: ValueKey('playlist_${playlist.id}_${song.id}_$index'),
                           direction: DismissDirection.endToStart,
@@ -340,16 +321,12 @@ class PlaylistDetailScreen extends ConsumerWidget {
                           ),
                           onDismissed: (direction) {
                             ref.read(playlistProvider.notifier).removeSongFromPlaylist(playlist.id, song.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Song removed from playlist')),
-                            );
                           },
                           child: SongTile(
                             song: song,
                             onTap: () async {
                               final handler = ref.read(audioHandlerProvider);
                               final mediaItems = playlist.songs.map((s) => s.toMediaItem()).toList();
-                              
                               await handler.updateQueue(mediaItems);
                               await handler.skipToQueueItem(index);
                               await handler.play();

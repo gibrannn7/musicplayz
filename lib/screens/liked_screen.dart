@@ -16,20 +16,22 @@ class LikedScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
         slivers: [
+          // FIX JENONG: Ganti SliverAppBar.large menjadi SliverAppBar Custom
           SliverAppBar(
             pinned: true,
+            expandedHeight: 110,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
-            elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+                child: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  title: const Text('Liked Songs', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+                  background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
                 ),
               ),
             ),
-            title: const Text('Liked Songs', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           likedSongs.isEmpty
               ? const SliverFillRemaining(
@@ -61,16 +63,12 @@ class LikedScreen extends ConsumerWidget {
                           ),
                           onDismissed: (direction) {
                             ref.read(likedSongsProvider.notifier).toggleLike(song);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Removed from Liked Songs')),
-                            );
                           },
                           child: SongTile(
                             song: song,
                             onTap: () async {
                               final handler = ref.read(audioHandlerProvider);
                               final mediaItems = likedSongs.map((s) => s.toMediaItem()).toList();
-                              
                               await handler.updateQueue(mediaItems);
                               await handler.skipToQueueItem(index);
                               await handler.play();

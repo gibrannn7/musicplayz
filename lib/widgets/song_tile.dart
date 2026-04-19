@@ -18,25 +18,27 @@ class SongTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      contentPadding: const EdgeInsets.only(left: 16, right: 4),
       leading: _buildArtwork(),
       title: Text(
         song.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w500),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
       ),
       subtitle: Text(
         song.artist,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodySmall,
+        style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(_formatDuration(song.duration), style: const TextStyle(color: Colors.grey, fontSize: 12)),
           IconButton(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.more_vert, size: 20),
+            color: Colors.grey.shade400,
             onPressed: () => _showOptions(context),
           ),
         ],
@@ -46,28 +48,39 @@ class SongTile extends StatelessWidget {
   }
 
   Widget _buildArtwork() {
-    if (song.customCoverPath != null && File(song.customCoverPath!).existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(song.customCoverPath!),
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-    return QueryArtworkWidget(
-      id: int.parse(song.id),
-      type: ArtworkType.AUDIO,
-      nullArtworkWidget: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(Icons.music_note, color: Colors.grey),
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: (song.customCoverPath != null && File(song.customCoverPath!).existsSync())
+            ? Image.file(
+                File(song.customCoverPath!),
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+                // BEST PRACTICE: Mencegah RAM bocor saat meload image resolusi tinggi
+                cacheWidth: 150, 
+              )
+            : QueryArtworkWidget(
+                id: int.parse(song.id),
+                type: ArtworkType.AUDIO,
+                artworkFit: BoxFit.cover,
+                // OPTIMASI: QueryArtworkWidget sudah membatasi size, tapi kita pastikan kualitasnya 'Low/Medium' untuk list
+                artworkQuality: FilterQuality.low,
+                nullArtworkWidget: Container(
+                  width: 50,
+                  height: 50,
+                  color: Colors.grey[800],
+                  child: const Icon(Icons.music_note, color: Colors.grey),
+                ),
+              ),
       ),
     );
   }

@@ -16,20 +16,22 @@ class ArtistsScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
         slivers: [
+          // FIX JENONG
           SliverAppBar(
             pinned: true,
+            expandedHeight: 110,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
-            elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+                child: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  title: const Text('Artists', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+                  background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
                 ),
               ),
             ),
-            title: const Text('Artists', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           artists.isEmpty
               ? const SliverFillRemaining(
@@ -67,31 +69,30 @@ class ArtistsScreen extends ConsumerWidget {
 
 class ArtistDetailScreen extends ConsumerWidget {
   final String artistName;
-
   const ArtistDetailScreen({super.key, required this.artistName});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artistSongs = ref.watch(artistSongsProvider(artistName));
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             pinned: true,
+            expandedHeight: 110,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
-            elevation: 0,
             flexibleSpace: ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+                child: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  title: Text(artistName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+                  background: Container(color: Theme.of(context).colorScheme.surface.withOpacity(0.4)),
                 ),
               ),
             ),
-            title: Text(artistName, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           SliverPadding(
             padding: const EdgeInsets.only(bottom: 140),
